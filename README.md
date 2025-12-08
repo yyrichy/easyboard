@@ -1,4 +1,4 @@
-# Distributed, Local-First Collaborative Whiteboard
+# Collaborative Whiteboard
 
 A real-time, "Share-to-Join" collaborative whiteboard built with **Next.js**, **Fabric.js**, and **Y.js**. Local-first, offline support, with conflict resolution/eventual consistency via CRDTs. No central authority or source of truth.
 

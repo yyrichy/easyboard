@@ -9,7 +9,6 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "@hocuspocus/provider": "^3.4.0",
     "@types/fabric": "5.3.10",
     "fabric": "5.5.2",
     "lucide-react": "^0.555.0",

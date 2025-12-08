@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { fabric } from 'fabric'
 import { IndexeddbPersistence } from 'y-indexeddb'
 import * as Y from 'yjs'
-import { HocuspocusProvider } from '@hocuspocus/provider'
+import { WebsocketProvider } from 'y-websocket'
 import { MousePointer2, Pencil, Square, Trash2, Type } from 'lucide-react'
 
 // Extend fabric.Object to include 'id'
@@ -16,7 +16,7 @@ export default function FabricCanvas({ roomId }: { roomId: string }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const fabricRef = useRef<fabric.Canvas | null>(null)
   const isRemoteUpdate = useRef(false)
-  const [provider, setProvider] = useState<HocuspocusProvider | null>(null)
+  const [provider, setProvider] = useState<WebsocketProvider | null>(null)
   const [activeTool, setActiveTool] = useState<'select' | 'draw'>('draw')
 
   const [cursors, setCursors] = useState<{ [key: number]: { x: number, y: number, color: string, name: string } }>({})
@@ -52,12 +52,12 @@ export default function FabricCanvas({ roomId }: { roomId: string }) {
     const yMap = yDoc.getMap('fabric-canvas')
     
     // 1. WebSocket Provider (Real-time)
-    const newProvider = new HocuspocusProvider({
-      url: process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:1234',
-      name: roomId,
-      document: yDoc,
-    })
-    setProvider(newProvider)
+    const newProvider = new WebsocketProvider(
+      process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:1234',
+      roomId,
+      yDoc
+    )
+    setProvider(newProvider as any)
 
     // 2. IndexedDB Provider (Offline Persistence)
     const indexeddbProvider = new IndexeddbPersistence(roomId, yDoc)
@@ -109,15 +109,25 @@ export default function FabricCanvas({ roomId }: { roomId: string }) {
       }
     }
 
+    // Awareness: Broadcast cursor position
     const handleMouseMove = throttle((e: any) => {
-        const pointer = canvas.getPointer(e.e)
-        awareness.setLocalStateField('cursor', {
-            x: pointer.x,
-            y: pointer.y,
+        if (!newProvider || !newProvider.awareness) return
+        const p = e.pointer
+        newProvider.awareness.setLocalStateField('cursor', {
+            x: p.x,
+            y: p.y
         })
-    }, 50) // Update every 50ms (20fps) - smooth enough, but saves bandwidth
-    
+    }, 50)
     canvas.on('mouse:move', handleMouseMove)
+
+    // Z-Index: Bring to front on selection
+    const handleSelection = (e: any) => {
+        if (e.target) {
+            e.target.bringToFront()
+        }
+    }
+    canvas.on('selection:created', handleSelection)
+    canvas.on('selection:updated', handleSelection)
 
 
     // --- Sync Logic ---
@@ -259,7 +269,7 @@ export default function FabricCanvas({ roomId }: { roomId: string }) {
       fabricRef.current.setActiveObject(rect)
       
       // Sync
-      const yMap = provider?.document.getMap('fabric-canvas')
+      const yMap = provider?.doc.getMap('fabric-canvas')
       if(yMap) yMap.set((rect as unknown as FabricObject).id!, rect.toObject(['id']))
       
       // Switch to select mode
@@ -299,7 +309,7 @@ export default function FabricCanvas({ roomId }: { roomId: string }) {
       text.selectAll()
 
       // Sync
-      const yMap = provider?.document.getMap('fabric-canvas')
+      const yMap = provider?.doc.getMap('fabric-canvas')
       if(yMap) yMap.set((text as unknown as FabricObject).id!, text.toObject(['id']))
 
       // Switch to select mode
@@ -313,7 +323,7 @@ export default function FabricCanvas({ roomId }: { roomId: string }) {
       fabricRef.current.setBackgroundColor('#f3f4f6', () => fabricRef.current?.renderAll())
       
       // Clear Yjs
-      const yMap = provider?.document.getMap('fabric-canvas')
+      const yMap = provider?.doc.getMap('fabric-canvas')
       if (yMap) yMap.clear()
   }
 

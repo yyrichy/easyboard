@@ -93,3 +93,36 @@ Y.js has a feature called `Awareness` which is perfect for ephemeral data that d
 
 -   **Fabric.js over Tldraw**: We switched from Tldraw to Fabric.js to have complete control over the visual style (the "Newspaper" look) and to avoid the generic whiteboard feel.
 -   **Custom Sync Engine**: Since Fabric.js doesn't have a built-in Y.js binding, we built a custom hook that listens to Fabric events (`object:modified`) and updates the Y.js map, and vice-versa.
+
+## Deployment
+
+### Backend → Railway (Free Tier)
+
+1. Install Railway CLI: `npm install -g @railway/cli`
+2. Login: `railway login`
+3. Deploy:
+   ```bash
+   cd apps/backend
+   railway init
+   railway up
+   ```
+4. Copy the deployed URL (e.g., `wss://your-app.railway.app`)
+
+### Frontend → Vercel (Free Tier)
+
+1. Push your repo to GitHub
+2. Go to [vercel.com](https://vercel.com) → Import project
+3. Set root directory to `apps/frontend`
+4. Add environment variable:
+   ```
+   NEXT_PUBLIC_WS_URL=wss://your-backend.railway.app
+   ```
+5. Deploy!
+
+### Environment Variables
+
+| Variable | Location | Description |
+|----------|----------|-------------|
+| `PORT` | Backend | Railway injects this automatically |
+| `NEXT_PUBLIC_WS_URL` | Frontend | WebSocket server URL (wss:// for production) |
+

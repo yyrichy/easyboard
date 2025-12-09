@@ -30,3 +30,25 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Excalidraw customizations */
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.share-panel { top: 12px; right: 12px; }
+@media (max-width: 640px) {
+  .share-panel { top: auto !important; bottom: 80px !important; }
+}
+
+/* Hide unwanted Excalidraw UI elements */
+.App-menu_top__left,
+.dropdown-menu-button,
+.HelpButton, [aria-label="Help"],
+.ToolIcon__lock, [data-testid="toolbar-lock"],
+.sidebar-trigger__label-element, .default-sidebar-trigger, label[title="Library"],
+.layer-ui__wrapper__footer-right,
+.welcome-screen-decor, .welcome-screen-center {
+  display: none !important;
+}

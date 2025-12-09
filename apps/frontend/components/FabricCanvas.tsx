@@ -338,7 +338,10 @@ export default function FabricCanvas({ roomId }: { roomId: string }) {
       <canvas ref={canvasRef} />
       
       {/* Header - User Settings & Share */}
-      <div className="absolute top-4 right-4 flex gap-3 z-50 font-serif">
+      <div 
+        className="absolute right-4 flex gap-3 z-50 font-serif"
+        style={{ top: 'max(1rem, env(safe-area-inset-top, 1rem))' }}
+      >
           <div className="bg-[#fdfbf7] p-2 rounded border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex items-center gap-2">
               <div className="w-6 h-6 bg-black text-white flex items-center justify-center font-bold text-xs rounded-sm">
                   {username.charAt(0).toUpperCase()}
@@ -386,7 +389,10 @@ export default function FabricCanvas({ roomId }: { roomId: string }) {
       ))}
       
       {/* Floating Toolbar - Newspaper Style */}
-      <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 bg-[#fdfbf7] p-2 rounded-lg shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] flex items-center gap-4 border-2 border-black z-50 font-serif">
+      <div 
+        className="absolute left-1/2 transform -translate-x-1/2 bg-[#fdfbf7] p-2 rounded-lg shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] flex items-center gap-4 border-2 border-black z-50 font-serif"
+        style={{ bottom: 'max(2rem, env(safe-area-inset-bottom, 2rem))' }}
+      >
          <div className="flex gap-2">
              <button 
                 onClick={() => {

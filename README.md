@@ -22,22 +22,8 @@ This project is a collaborative whiteboard that allows users to:
 
 ## Architecture
 
-```
-┌─────────────────┐     Y.js Sync     ┌─────────────────┐
-│  Client A       │◄─────────────────►│  WebSocket      │
-│                 │     (Binary)      │  Server         │
-└─────────────────┘                   │  (Stateless)    │
-                                      └────────┬────────┘
-┌─────────────────┐     Y.js Sync              │
-│  Client B       │◄───────────────────────────┘
-│                 │
-└─────────────────┘
-
-Each client has:
-- Y.Doc → Shared CRDT document
-- Y.Map → Stores Excalidraw elements by ID
-- IndexedDB → Local persistence for offline
-```
+(Made on this project's site itself!)
+![Architecture](ArchitectureDiagram.png)
 
 ## How Y.js Works (The Magic)
 

@@ -1,51 +1,66 @@
 # Collaborative Whiteboard
 
-A real-time, "Share-to-Join" collaborative whiteboard built with **Next.js**, **Fabric.js**, and **Y.js**. Local-first, offline support, with conflict resolution/eventual consistency via CRDTs. No central authority or source of truth.
+A real-time, "Share-to-Join" collaborative whiteboard built with **Next.js**, **Excalidraw**, and **Y.js**. Local-first with offline support, using CRDTs for conflict resolution and eventual consistency. No central authority or source of truth.
 
 ## Overview
 
 This project is a collaborative whiteboard that allows users to:
--   **Draw** freehand sketches.
--   **Add Shapes** (Rectangles) and **Text**.
--   **Collaborate Real-time**: See other users' cursors and changes instantly.
+-   **Draw** freehand sketches
+-   **Add Shapes** (rectangles, ellipses, arrows, etc.)
+-   **Erase** strokes (proper eraser, not white paint)
+-   **Collaborate Real-time**: See other users' changes instantly
 -   **Share-to-Join**: No login required. Just share the URL.
--   **Newspaper Theme**: A unique, high-contrast, serif-styled UI.
+-   **Offline Support**: Continue working offline, changes sync when reconnected
 
 ## Tech Stack
 
--   **Frontend**: Next.js (App Router), React, Tailwind CSS.
--   **Whiteboard Engine**: [Fabric.js](http://fabricjs.com/) - chosen for its flexibility and customizability compared to "boilerplate" whiteboard tools.
--   **Real-time Sync**: [Y.js](https://github.com/yjs/yjs) - A CRDT (Conflict-free Replicated Data Type) library.
--   **WebSocket Server**: [Hocuspocus](https://hocuspocus.dev/) - A scalable WebSocket backend for Y.js.
--   **Styling**: Tailwind CSS + Lucide Icons.
+-   **Frontend**: Next.js (App Router), React, Tailwind CSS
+-   **Whiteboard Engine**: [Excalidraw](https://excalidraw.com/) - MIT licensed, battle-tested (used by Meta, Microsoft, etc.)
+-   **Real-time Sync**: [Y.js](https://github.com/yjs/yjs) - CRDT (Conflict-free Replicated Data Type) library
+-   **WebSocket Server**: Custom raw Y.js WebSocket server
+-   **Offline Persistence**: [y-indexeddb](https://github.com/yjs/y-indexeddb)
 
-## How Y.js Helps (The Magic Sauce)
+## Architecture
 
-Y.js is the backbone of the collaboration features. Here's how it works in this project:
+```
+┌─────────────────┐     Y.js Sync     ┌─────────────────┐
+│  Client A       │◄─────────────────►│  WebSocket      │
+│                 │     (Binary)      │  Server         │
+└─────────────────┘                   │  (Stateless)    │
+                                      └────────┬────────┘
+┌─────────────────┐     Y.js Sync              │
+│  Client B       │◄───────────────────────────┘
+│                 │
+└─────────────────┘
 
-### 1. Shared Data Structure (`Y.Map`)
-Instead of sending JSON blobs back and forth, we store the entire canvas state in a shared `Y.Map` called `'fabric-canvas'`.
--   **Key**: The Object ID (e.g., `rect-123`).
--   **Value**: The Fabric.js object representation (JSON).
+Each client has:
+- Y.Doc → Shared CRDT document
+- Y.Map → Stores Excalidraw elements by ID
+- IndexedDB → Local persistence for offline
+```
 
-### 2. Conflict Resolution (CRDTs)
-When two users edit the whiteboard at the same time, Y.js ensures they end up with the **same state** without needing a central authority to "lock" the file.
+## How Y.js Works (The Magic)
 
-*   **Scenario A: Concurrent Editing**
-    *   User A moves "Rect 1" to the left.
-    *   User B moves "Rect 1" to the right.
-    *   **Resolution**: Y.js uses a "Last Write Wins" approach for the object properties. The update that occurred "later" (based on logical clocks) will be the final position. Everyone sees the same result.
+### Shared Data Structure (`Y.Map`)
+Excalidraw elements are stored in a shared `Y.Map`:
+-   **Key**: Element ID (e.g., `arrow_1702...`)
+-   **Value**: Excalidraw element object
 
-*   **Scenario B: Offline Editing**
-    *   User A goes offline and adds 5 shapes.
-    *   User B stays online and deletes 2 shapes.
-    *   **Resolution**: When User A reconnects, Y.js merges the changes. The 5 new shapes appear. If User A modified a shape that User B deleted, the deletion typically takes precedence (depending on the exact implementation of the map key removal).
+### Conflict Resolution (CRDTs)
+When two users edit simultaneously, Y.js ensures eventual consistency:
 
-### 3. Awareness (Cursors & Presence)
-Y.js has a feature called `Awareness` which is perfect for ephemeral data that doesn't need to be stored forever.
--   **Cursors**: We broadcast mouse coordinates (x, y) via Awareness.
--   **Usernames**: When you set your name, it's broadcast via Awareness.
--   **Resolution**: If two users have the same name, it doesn't matter. Awareness just shows "who is online right now".
+| Scenario | Resolution |
+|----------|------------|
+| User A and B move same shape | "Last Write Wins" - latest timestamp wins |
+| User A goes offline, adds shapes | Shapes merge when reconnected |
+| User A deletes, User B modifies | Deletion typically wins |
+
+### Why Backend Doesn't Care About Excalidraw
+The backend is **data-agnostic**. It only relays Y.js binary updates:
+```
+Client A → Yjs Update (binary) → Server → broadcast → Client B
+```
+It doesn't parse or validate the data - works with any Y.js content.
 
 ## Installation
 
@@ -55,74 +70,69 @@ Y.js has a feature called `Awareness` which is perfect for ephemeral data that d
 
 ### Setup
 
-1.  **Install Dependencies** (Root)
+1.  **Install Dependencies**
     ```bash
     npm install
     ```
 
-2.  **Run Separately (Recommended)**
-    Open two terminals:
-
-    **Terminal 1: Backend**
+2.  **Run Backend** (Terminal 1)
     ```bash
     cd apps/backend
     npm run dev
     ```
     *(Runs on ws://localhost:1234)*
 
-    **Terminal 2: Frontend**
+3.  **Run Frontend** (Terminal 2)
     ```bash
     cd apps/frontend
     npm run dev
     ```
     *(Runs on http://localhost:3000)*
 
-    > **Note**: You can still run both at once with `npm run dev --workspaces` in the root if you prefer.
-
 ## Project Structure
 
 ```
 .
 ├── apps
-│   ├── backend     # Hocuspocus WebSocket Server
-│   └── frontend    # Next.js App (Fabric.js Canvas)
-├── package.json    # Monorepo configuration      
+│   ├── backend          # Raw Y.js WebSocket Server
+│   │   └── raw-server.ts
+│   └── frontend         # Next.js App
+│       └── components
+│           └── ExcalidrawCanvas.tsx
+├── package.json         # Monorepo configuration
 ```
-
-## Design Decisions
-
--   **Fabric.js over Tldraw**: We switched from Tldraw to Fabric.js to have complete control over the visual style (the "Newspaper" look) and to avoid the generic whiteboard feel.
--   **Custom Sync Engine**: Since Fabric.js doesn't have a built-in Y.js binding, we built a custom hook that listens to Fabric events (`object:modified`) and updates the Y.js map, and vice-versa.
 
 ## Deployment
 
-### Backend → Railway (Free Tier)
+### Backend → Railway
 
-1. Install Railway CLI: `npm install -g @railway/cli`
-2. Login: `railway login`
-3. Deploy:
-   ```bash
-   cd apps/backend
-   railway init
-   railway up
-   ```
-4. Copy the deployed URL (e.g., `wss://your-app.railway.app`)
+```bash
+cd apps/backend
+railway init
+railway up
+```
 
-### Frontend → Vercel (Free Tier)
+### Frontend → Vercel
 
-1. Push your repo to GitHub
-2. Go to [vercel.com](https://vercel.com) → Import project
-3. Set root directory to `apps/frontend`
+1. Push to GitHub
+2. Import project at [vercel.com](https://vercel.com)
+3. Set root directory: `apps/frontend`
 4. Add environment variable:
    ```
    NEXT_PUBLIC_WS_URL=wss://your-backend.railway.app
    ```
-5. Deploy!
 
 ### Environment Variables
 
 | Variable | Location | Description |
 |----------|----------|-------------|
-| `PORT` | Backend | Railway injects this automatically |
-| `NEXT_PUBLIC_WS_URL` | Frontend | WebSocket server URL (wss:// for production) |
+| `PORT` | Backend | Railway injects automatically |
+| `NEXT_PUBLIC_WS_URL` | Frontend | WebSocket URL (wss:// for production) |
 
+## Resume Value
+
+This project demonstrates:
+- **Distributed Systems**: CRDTs, eventual consistency, conflict resolution
+- **Real-time Collaboration**: WebSocket protocol, Y.js sync layer
+- **Offline-First Architecture**: IndexedDB persistence, reconnection handling
+- **Custom Protocol**: Raw WebSocket handling (not using a framework like Socket.io)

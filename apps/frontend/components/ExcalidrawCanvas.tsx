@@ -18,7 +18,7 @@ export default function ExcalidrawCanvas({ roomId }: Props) {
   const yElementsRef = useRef<Y.Map<any> | null>(null)
   const isLocalChange = useRef(false)
 
-  // Initialize Yjs
+  // Initialize Yjs - runs ONCE per room
   useEffect(() => {
     const yDoc = new Y.Doc()
     const yElements = yDoc.getMap('elements')
@@ -32,13 +32,27 @@ export default function ExcalidrawCanvas({ roomId }: Props) {
       yDoc
     )
 
-    // IndexedDB for offline
-    new IndexeddbPersistence(roomId, yDoc)
+    // IndexedDB for offline - MUST store reference for cleanup
+    const indexeddbProvider = new IndexeddbPersistence(roomId, yDoc)
+
+    return () => {
+      // Cleanup order matters! Destroy providers before Y.Doc
+      indexeddbProvider.destroy()
+      provider.destroy()
+      yDoc.destroy()
+      yDocRef.current = null
+      yElementsRef.current = null
+    }
+  }, [roomId])
+
+  // Separate effect for observing remote changes (depends on excalidrawAPI)
+  useEffect(() => {
+    const yElements = yElementsRef.current
+    if (!yElements || !excalidrawAPI) return
 
     // Listen for remote changes only
     const observer = (event: Y.YMapEvent<any>, transaction: Y.Transaction) => {
       if (transaction.local) return
-      if (!excalidrawAPI) return
 
       const elements = Array.from(yElements.values())
       if (elements.length > 0) {
@@ -54,10 +68,8 @@ export default function ExcalidrawCanvas({ roomId }: Props) {
 
     return () => {
       yElements.unobserve(observer)
-      provider.destroy()
-      yDoc.destroy()
     }
-  }, [roomId, excalidrawAPI])
+  }, [excalidrawAPI])
 
   // Load initial data when API is ready
   useEffect(() => {
